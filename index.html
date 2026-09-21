@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#070b09" />
+    <title>Dev Path</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="mode-toggle" class="mode-toggle" role="group" aria-label="Режим">
+        <button type="button" class="mode-toggle-btn" data-mode="view" aria-pressed="false">Просмотр</button>
+        <button type="button" class="mode-toggle-btn is-active" data-mode="interactive" aria-pressed="true">Интерактив</button>
+      </div>
+      <div id="overlay" class="overlay">
+        <p class="prompt-hint" id="start-hint">Нажмите, чтобы начать</p>
+      </div>
+      <div id="transition-veil"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
