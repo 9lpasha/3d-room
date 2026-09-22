@@ -70,7 +70,7 @@ export async function loadBootRoom(threeScene, onProgress) {
 
   const textureLoader = new THREE.TextureLoader(manager);
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath("/draco/");
+  dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
   dracoLoader.preload();
 
   const gltfLoader = new GLTFLoader(manager);
