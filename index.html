@@ -10,12 +10,24 @@
   <body>
     <div id="app">
       <canvas id="game"></canvas>
+      <div id="loader" class="loader" role="status" aria-live="polite">
+        <p class="loader-label">Загрузка</p>
+        <div class="loader-track">
+          <div class="loader-bar" id="loader-bar"></div>
+        </div>
+      </div>
       <div id="mode-toggle" class="mode-toggle" role="group" aria-label="Режим">
         <button type="button" class="mode-toggle-btn" data-mode="view" aria-pressed="false">Просмотр</button>
         <button type="button" class="mode-toggle-btn is-active" data-mode="interactive" aria-pressed="true">Интерактив</button>
       </div>
       <div id="overlay" class="overlay">
         <p class="prompt-hint" id="start-hint">Нажмите, чтобы начать</p>
+      </div>
+      <div id="inspect-modal" class="inspect-modal" hidden>
+        <div class="inspect-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="inspect-modal-text">
+          <button type="button" class="inspect-modal-close" id="inspect-modal-close" aria-label="Закрыть">×</button>
+          <p id="inspect-modal-text" class="inspect-modal-text"></p>
+        </div>
       </div>
       <div id="transition-veil"></div>
     </div>

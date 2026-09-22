@@ -15,6 +15,9 @@ export class Terminal {
     this.input = "";
     this.extraText = "";
     this.inputEnabled = false;
+    this.autoFill = false;
+    this.autoFillTimer = 0;
+    this.autoSubmitDelay = 0;
     this.cursorOn = true;
     this.blinkTimer = 0;
     this.dirty = true;
@@ -138,6 +141,23 @@ export class Terminal {
           this.printing = null;
           this.dirty = true;
           resolve();
+        }
+      }
+    }
+
+    if (this.autoFill && this.inputEnabled) {
+      if (!this.isComplete()) {
+        this.autoFillTimer += delta;
+        const nextCount = Math.min(this.forcedCommand.length, Math.floor(this.autoFillTimer * 11));
+        if (nextCount !== this.typedCount) {
+          this.typedCount = nextCount;
+          this.input = this.forcedCommand.slice(0, this.typedCount);
+          this.dirty = true;
+        }
+      } else {
+        this.autoSubmitDelay += delta;
+        if (this.autoSubmitDelay >= 0.4) {
+          this.submit();
         }
       }
     }

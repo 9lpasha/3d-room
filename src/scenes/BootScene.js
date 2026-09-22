@@ -1,38 +1,28 @@
 import * as THREE from "three";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Scene } from "../game/Scene.js";
 import { Terminal } from "../ui/Terminal.js";
 import { createCrtMaterial } from "../shaders/crtScreen.js";
-import { clamp, easeInOutCubic, lerp } from "../game/easing.js";
-import bakedUrl from "../assets/baked.jpg";
-import roomUrl from "../assets/room_corner.glb?url";
+import { clamp, easeInOutCubic } from "../game/easing.js";
+import { BootCamera } from "./boot/BootCamera.js";
+import { InspectSystem } from "./boot/InspectSystem.js";
+import { mountLaptopDisplay } from "./boot/laptopDisplay.js";
+import { loadBootRoom } from "./boot/loadRoom.js";
+import { WindowParallax } from "./boot/windowParallax.js";
+import { setLoadProgress } from "../ui/Loader.js";
 
 export class BootScene extends Scene {
   async init() {
     this.threeScene = new THREE.Scene();
     this.threeScene.background = new THREE.Color(0x1a1714);
 
-    this.closeFov = 38;
-    this.roomFov = 36;
-    this.camera = new THREE.PerspectiveCamera(this.closeFov, 9 / 16, 0.04, 80);
-    this.cameraFrom = new THREE.Vector3();
-    this.cameraTo = new THREE.Vector3();
-    this.cameraRoom = new THREE.Vector3();
-    this.lookClose = new THREE.Vector3();
-    this.lookRoom = new THREE.Vector3();
-    this.lookAt = new THREE.Vector3();
-    this.screenNormal = new THREE.Vector3(0, 0, 1);
-    this.screenUp = new THREE.Vector3(0, 1, 0);
-    this.frameHalfWidth = 0.14;
-    this.frameHalfHeight = 0.09;
-    this.roomBox = new THREE.Box3();
+    this.cameraRig = new BootCamera();
+    this.camera = this.cameraRig.camera;
 
     this.terminal = new Terminal();
     this.terminal.onSubmit = () => {
       void this.playNpmFail();
     };
+    this.terminal.autoFill = window.matchMedia("(pointer: coarse)").matches;
     this.terminal.draw();
 
     this.screenTexture = new THREE.CanvasTexture(this.terminal.canvas);
@@ -42,8 +32,6 @@ export class BootScene extends Scene {
 
     this.crtMaterial = createCrtMaterial(this.screenTexture);
     this.crtMaterial.side = THREE.FrontSide;
-    this.laptopScreen = null;
-    this.powerLed = null;
 
     this.bootStarted = false;
     this.bootTime = 0;
@@ -55,209 +43,46 @@ export class BootScene extends Scene {
     this.textStarted = false;
     this.storyStarted = false;
     this.playMode = "interactive";
-    this.controls = null;
+    this.storyViewEntered = false;
     this.hint = document.querySelector("#start-hint");
     this.modeToggle = document.querySelector("#mode-toggle");
+    this.displayMesh = null;
 
     this.previousToneMapping = this.game.renderer.toneMapping;
     this.previousExposure = this.game.renderer.toneMappingExposure;
     this.game.renderer.toneMapping = THREE.NoToneMapping;
     this.game.renderer.toneMappingExposure = 1;
 
-    await this.loadRoom();
+    const { roomRoot, laptopScreen, windowView, windowUniforms } = await loadBootRoom(this.threeScene, setLoadProgress);
+    this.roomRoot = roomRoot;
+    this.laptopScreen = laptopScreen;
+    this.windowParallax = windowView ? new WindowParallax(windowView, windowUniforms) : null;
+
     this.threeScene.updateMatrixWorld(true);
-    this.aimCameras();
-    this.setupControls();
+    this.cameraRig.aim(laptopScreen, roomRoot);
+    this.windowParallax?.setReference(this.camera.position);
+    this.displayMesh = mountLaptopDisplay({
+      laptopScreen,
+      material: this.crtMaterial,
+      screenNormal: this.cameraRig.screenNormal,
+      previous: this.displayMesh,
+    });
+    this.cameraRig.setupControls(this.game.canvas);
+
+    this.inspect = new InspectSystem({
+      threeScene: this.threeScene,
+      camera: this.camera,
+      renderer: this.game.renderer,
+      canvas: this.game.canvas,
+      getPlayMode: () => this.playMode,
+      cameraRig: this.cameraRig,
+    });
+    this.inspect.setup(roomRoot, this.displayMesh);
+
     this.bindInput();
     this.bindModeToggle();
+    this.inspect.bind();
     this.ready = true;
-  }
-
-  async loadRoom() {
-    const textureLoader = new THREE.TextureLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath("/draco/");
-    dracoLoader.preload();
-
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.setDRACOLoader(dracoLoader);
-
-    const [baked, gltf] = await Promise.all([textureLoader.loadAsync(bakedUrl), gltfLoader.loadAsync(roomUrl)]);
-
-    baked.flipY = false;
-    baked.colorSpace = THREE.SRGBColorSpace;
-    baked.anisotropy = 8;
-
-    const bakedMaterial = new THREE.MeshBasicMaterial({ map: baked });
-    this.roomRoot = gltf.scene;
-    this.threeScene.add(this.roomRoot);
-
-    this.roomRoot.traverse((child) => {
-      if (!child.isMesh) {
-        return;
-      }
-
-      const materialName = Array.isArray(child.material) ? child.material[0]?.name : child.material?.name;
-
-      if (!child.material || child.name.startsWith("Плоскость")) {
-        child.visible = false;
-        return;
-      }
-
-      if (materialName === "Screen") {
-        this.laptopScreen = child;
-        child.material = new THREE.MeshBasicMaterial({ color: 0x050505 });
-        return;
-      }
-
-      if (materialName === "LampMetal" || materialName === "LampInner" || materialName === "LampShade") {
-        child.material = new THREE.MeshBasicMaterial({ map: baked, side: THREE.DoubleSide });
-        return;
-      }
-
-      child.material = bakedMaterial;
-    });
-
-    if (!this.laptopScreen) {
-      throw new Error("Laptop screen mesh not found in room_corner.glb");
-    }
-  }
-
-  aimCameras() {
-    const screenPos = new THREE.Vector3();
-    const screenQuat = new THREE.Quaternion();
-    this.laptopScreen.updateWorldMatrix(true, false);
-    this.laptopScreen.getWorldPosition(screenPos);
-    this.laptopScreen.getWorldQuaternion(screenQuat);
-
-    const geometry = this.laptopScreen.geometry;
-    geometry.computeBoundingBox();
-    const localSize = geometry.boundingBox.getSize(new THREE.Vector3());
-    const worldScale = new THREE.Vector3();
-    this.laptopScreen.getWorldScale(worldScale);
-    this.frameHalfWidth = (localSize.x * worldScale.x) / 2;
-    this.frameHalfHeight = (localSize.y * worldScale.y) / 2;
-
-    this.screenUp.set(0, 1, 0).applyQuaternion(screenQuat).normalize();
-    const facingA = new THREE.Vector3(0, 0, 1).applyQuaternion(screenQuat).normalize();
-    const facingB = facingA.clone().negate();
-
-    this.roomBox.setFromObject(this.roomRoot);
-    const chair = this.roomRoot.getObjectByName("Chair");
-    const viewer = new THREE.Vector3();
-    if (chair) {
-      chair.getWorldPosition(viewer);
-    } else {
-      this.roomBox.getCenter(viewer);
-    }
-    viewer.sub(screenPos);
-    viewer.y = 0;
-    if (viewer.lengthSq() < 0.0001) {
-      viewer.set(0, 0, -1);
-    } else {
-      viewer.normalize();
-    }
-
-    const screenCenter = geometry.boundingBox.getCenter(new THREE.Vector3());
-    this.laptopScreen.localToWorld(screenCenter);
-
-    this.screenNormal.copy(facingA.dot(viewer) >= facingB.dot(viewer) ? facingA : facingB);
-    this.screenNormal.negate();
-
-    this.lookClose.copy(screenCenter);
-    this.placeCloseCamera();
-    this.frameRoomCamera();
-    this.lookAt.copy(this.lookClose);
-    this.camera.position.copy(this.cameraFrom);
-    this.camera.lookAt(this.lookAt);
-
-    this.mountDisplay();
-  }
-
-  mountDisplay() {
-    if (this.displayMesh) {
-      this.displayMesh.removeFromParent();
-      this.displayMesh.geometry.dispose();
-    }
-
-    const geometry = this.laptopScreen.geometry;
-    geometry.computeBoundingBox();
-    const box = geometry.boundingBox;
-    const width = box.max.x - box.min.x;
-    const height = box.max.y - box.min.y;
-    const plane = new THREE.PlaneGeometry(width, height);
-
-    const inverse = this.laptopScreen.matrixWorld.clone().invert();
-    const localCam = this.screenNormal.clone().transformDirection(inverse);
-    const towardCam = localCam.z >= 0 ? 1 : -1;
-
-    if (towardCam < 0) {
-      const uvs = plane.attributes.uv;
-      for (let i = 0; i < uvs.count; i += 1) {
-        uvs.setX(i, 1 - uvs.getX(i));
-      }
-      uvs.needsUpdate = true;
-    }
-
-    const display = new THREE.Mesh(plane, this.crtMaterial);
-    display.position.set(
-      (box.min.x + box.max.x) / 2,
-      (box.min.y + box.max.y) / 2,
-      (box.min.z + box.max.z) / 2 + towardCam * 0.0015,
-    );
-    if (towardCam < 0) {
-      display.rotation.y = Math.PI;
-    }
-
-    this.laptopScreen.add(display);
-    this.displayMesh = display;
-  }
-
-  placeCloseCamera() {
-    const vFov = THREE.MathUtils.degToRad(this.closeFov);
-    const aspect = Math.max(this.camera.aspect, 0.01);
-    const distFar = Math.max(
-      (this.frameHalfWidth * 1.22) / (Math.tan(vFov / 2) * aspect),
-      (this.frameHalfHeight * 1.22) / Math.tan(vFov / 2),
-    );
-    const distClose = distFar * 0.82;
-
-    this.cameraTo
-      .copy(this.lookClose)
-      .addScaledVector(this.screenNormal, distClose)
-      .addScaledVector(this.screenUp, this.frameHalfHeight * 0.22)
-      .add(new THREE.Vector3(0, 0.3, -0.2));
-
-    this.cameraFrom
-      .copy(this.lookClose)
-      .addScaledVector(this.screenNormal, distFar)
-      .addScaledVector(this.screenUp, this.frameHalfHeight * 0.28)
-      .add(new THREE.Vector3(0, 0.1, 0));
-
-    this.nudgeAwayFromChair(this.cameraFrom);
-  }
-
-  setupControls() {
-    this.controls = new OrbitControls(this.camera, this.game.canvas);
-    this.controls.enabled = false;
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.enablePan = true;
-    this.controls.rotateSpeed = 0.72;
-    this.controls.zoomSpeed = 0.9;
-    this.controls.minPolarAngle = 0.18;
-    this.controls.maxPolarAngle = Math.PI * 0.49;
-    this.fitViewLimits();
-  }
-
-  fitViewLimits() {
-    if (!this.controls || this.roomBox.isEmpty()) {
-      return;
-    }
-
-    const size = this.roomBox.getSize(new THREE.Vector3());
-    this.controls.minDistance = 0.32;
-    this.controls.maxDistance = Math.max(size.length() * 1.35, 5);
   }
 
   bindModeToggle() {
@@ -285,15 +110,19 @@ export class BootScene extends Scene {
       return;
     }
 
+    this.inspect.closeModal();
+    this.inspect.setHovered(null);
     this.playMode = mode;
     this.syncModeToggle();
 
     if (mode === "view") {
-      this.enterViewMode();
-      return;
+      this.hideStartHint();
+      this.cameraRig.enterViewMode({ useDefaultPose: this.storyViewEntered });
+    } else {
+      this.cameraRig.enterInteractiveMode(this.cameraBlend, this.pullbackBlend);
+      this.showStartHint();
     }
 
-    this.enterInteractiveMode();
   }
 
   syncModeToggle() {
@@ -308,112 +137,15 @@ export class BootScene extends Scene {
     });
   }
 
-  enterViewMode() {
-    this.hideStartHint();
-    this.fitViewLimits();
-    this.controls.target.copy(this.lookRoom);
-    this.camera.position.copy(this.cameraRoom);
-    this.camera.fov = this.roomFov;
-    this.camera.lookAt(this.controls.target);
-    this.camera.updateProjectionMatrix();
-    this.controls.enabled = true;
-    this.controls.update();
-  }
-
-  enterInteractiveMode() {
-    this.controls.enabled = false;
-    this.applyStoryCamera();
-
-    if (!this.bootStarted && this.hint) {
-      window.clearTimeout(this.hintHideTimer);
-      this.hint.hidden = false;
-      this.hint.classList.remove("is-hidden");
-      this.hint.setAttribute("aria-hidden", "false");
-    }
-  }
-
-  applyStoryCamera() {
-    if (this.pullbackBlend > 0) {
-      this.camera.position.lerpVectors(this.cameraTo, this.cameraRoom, this.pullbackBlend);
-      this.lookAt.lerpVectors(this.lookClose, this.lookRoom, this.pullbackBlend);
-      this.camera.fov = lerp(this.closeFov, this.roomFov, this.pullbackBlend);
-    } else {
-      this.camera.position.lerpVectors(this.cameraFrom, this.cameraTo, this.cameraBlend);
-      this.lookAt.copy(this.lookClose);
-      this.camera.fov = this.closeFov;
-    }
-
-    this.camera.lookAt(this.lookAt);
-    this.camera.updateProjectionMatrix();
-  }
-
-  nudgeAwayFromChair(position) {
-    const chair = this.roomRoot.getObjectByName("Chair");
-    if (!chair) {
-      return;
-    }
-
-    const box = new THREE.Box3().setFromObject(chair);
-    box.expandByScalar(0.1);
-    const chairCenter = box.getCenter(new THREE.Vector3());
-    const toScreen = this.lookClose.clone().sub(position).normalize();
-    const ray = new THREE.Ray(position, toScreen);
-
-    if (!box.containsPoint(position) && !ray.intersectsBox(box)) {
-      return;
-    }
-
-    const away = position.clone().sub(chairCenter);
-    away.y = 0;
-    if (away.lengthSq() < 0.0001) {
-      away.crossVectors(this.screenNormal, new THREE.Vector3(0, 1, 0));
-    }
-    away.normalize();
-    position.addScaledVector(away, 0.32);
-    position.y += 0.2;
-
-    const retry = new THREE.Ray(position, this.lookClose.clone().sub(position).normalize());
-    if (box.containsPoint(position) || retry.intersectsBox(box)) {
-      position.addScaledVector(away, 0.2);
-      position.y += 0.16;
-    }
-  }
-
-  frameRoomCamera() {
-    if (this.roomBox.isEmpty()) {
-      return;
-    }
-
-    const size = this.roomBox.getSize(new THREE.Vector3());
-    const center = this.roomBox.getCenter(new THREE.Vector3());
-    const padding = 1.08;
-    const vFov = THREE.MathUtils.degToRad(this.roomFov);
-    const aspect = Math.max(this.camera.aspect, 0.01);
-    const dist = Math.max(
-      (size.y * 0.5 * padding) / Math.tan(vFov / 2),
-      (size.x * 0.5 * padding) / (Math.tan(vFov / 2) * aspect),
-    );
-
-    this.lookRoom.copy(center);
-    this.lookRoom.y = center.y * 0.78;
-    const flower = this.roomRoot.getObjectByName("Flower");
-    if (flower) {
-      const flowerBox = new THREE.Box3().setFromObject(flower);
-      flowerBox.getCenter(this.lookRoom);
-    }
-
-    this.cameraRoom.copy(center).addScaledVector(this.screenNormal, dist * 0.42);
-    this.cameraRoom.y = center.y + size.y * 0.1;
-
-    const margin = 0.22;
-    this.cameraRoom.x = clamp(this.cameraRoom.x, this.roomBox.min.x + margin, this.roomBox.max.x - margin);
-    this.cameraRoom.y = clamp(this.cameraRoom.y, this.roomBox.min.y + 0.7, this.roomBox.max.y - margin);
-    this.cameraRoom.z = clamp(this.cameraRoom.z, this.roomBox.min.z + margin, this.roomBox.max.z - margin);
-  }
-
   bindInput() {
     this.onPointer = (event) => {
-      if (this.playMode === "view" || event.target.closest?.("#mode-toggle")) {
+      if (this.inspect.open || event.target.closest?.("#mode-toggle") || event.target.closest?.("#inspect-modal")) {
+        return;
+      }
+      if (this.playMode === "view") {
+        return;
+      }
+      if (this.inspect.canInspect(this.inspect.hitId(event))) {
         return;
       }
       if (!this.bootStarted) {
@@ -423,7 +155,10 @@ export class BootScene extends Scene {
       this.handleTap();
     };
     this.onKey = (event) => {
-      if (this.playMode === "view") {
+      if (this.inspect.onKey(event)) {
+        return;
+      }
+      if (this.inspect.open || this.playMode === "view") {
         return;
       }
       if (!this.bootStarted) {
@@ -463,6 +198,17 @@ export class BootScene extends Scene {
     }, 800);
   }
 
+  showStartHint() {
+    if (this.bootStarted || !this.hint) {
+      return;
+    }
+
+    window.clearTimeout(this.hintHideTimer);
+    this.hint.hidden = false;
+    this.hint.classList.remove("is-hidden");
+    this.hint.setAttribute("aria-hidden", "false");
+  }
+
   async beginBoot() {
     if (this.bootStarted) {
       return;
@@ -492,11 +238,29 @@ export class BootScene extends Scene {
     });
   }
 
+  updateCrt(delta) {
+    this.crtMaterial.uniforms.uTime.value += delta;
+    this.crtMaterial.uniforms.uPower.value = this.power;
+  }
+
   update(delta) {
     if (this.playMode === "view") {
-      this.crtMaterial.uniforms.uTime.value += delta;
-      this.crtMaterial.uniforms.uPower.value = this.power;
-      this.controls?.update();
+      this.updateCrt(delta);
+      if (this.cameraRig.updatePose(delta)) {
+        if (!this.cameraRig.poseActive) {
+          this.cameraRig.setControlsEnabled(true);
+        }
+      } else {
+        this.cameraRig.controls?.update();
+      }
+      this.windowParallax?.update(this.camera);
+      return;
+    }
+
+    if (this.cameraRig.poseActive) {
+      this.updateCrt(delta);
+      this.cameraRig.updatePose(delta);
+      this.windowParallax?.update(this.camera);
       return;
     }
 
@@ -517,37 +281,40 @@ export class BootScene extends Scene {
       this.pullbackBlend = easeInOutCubic(clamp(this.pullbackTime / 3.3, 0, 1));
     }
 
-    const textureChanged = this.terminal.update(delta);
-    if (textureChanged) {
+    if (this.terminal.update(delta)) {
       this.screenTexture.needsUpdate = true;
     }
 
-    this.crtMaterial.uniforms.uTime.value += delta;
-    this.crtMaterial.uniforms.uPower.value = this.power;
+    this.updateCrt(delta);
+    this.cameraRig.applyStoryCamera(this.cameraBlend, this.pullbackBlend);
 
-    this.applyStoryCamera();
+    if (!this.storyViewEntered && this.pullbackStarted && this.pullbackBlend >= 1) {
+      this.storyViewEntered = true;
+      if (this.playMode !== "view") {
+        this.setPlayMode("view");
+      }
+    }
+
+    this.windowParallax?.update(this.camera);
+  }
+
+  render() {
+    if (!this.inspect.render()) {
+      this.game.renderer.render(this.threeScene, this.camera);
+    }
   }
 
   resize(width, height) {
-    this.camera.aspect = width / Math.max(height, 1);
-    if (this.laptopScreen) {
-      this.placeCloseCamera();
-      this.frameRoomCamera();
-      this.fitViewLimits();
-    }
-    if (this.playMode === "interactive") {
-      this.applyStoryCamera();
-    } else {
-      this.camera.updateProjectionMatrix();
-      this.controls?.update();
-    }
+    this.cameraRig.resize(width, height, this.playMode, this.cameraBlend, this.pullbackBlend);
+    this.inspect.resize(width, height);
   }
 
   exit() {
     window.removeEventListener("pointerdown", this.onPointer);
     window.removeEventListener("keydown", this.onKey);
     this.modeToggle?.removeEventListener("pointerdown", this.onModePointer);
-    this.controls?.dispose();
+    this.inspect.dispose();
+    this.cameraRig.dispose();
     this.game.renderer.toneMapping = this.previousToneMapping;
     this.game.renderer.toneMappingExposure = this.previousExposure;
   }
