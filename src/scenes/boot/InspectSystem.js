@@ -123,6 +123,12 @@ export class InspectSystem {
       event.stopPropagation();
       this.closeModal();
     };
+    this.onBackdrop = (event) => {
+      if (event.target.closest(".inspect-modal-dialog")) {
+        return;
+      }
+      this.closeModal();
+    };
     this.onKey = (event) => {
       if (event.key !== "Escape" || !this.open) {
         return false;
@@ -137,6 +143,7 @@ export class InspectSystem {
     this.canvas.addEventListener("pointerleave", this.onLeave);
     window.addEventListener("pointerup", this.onUp);
     this.closeButton?.addEventListener("click", this.onClose);
+    document.addEventListener("pointerdown", this.onBackdrop);
   }
 
   unbind() {
@@ -145,6 +152,7 @@ export class InspectSystem {
     this.canvas.removeEventListener("pointerleave", this.onLeave);
     window.removeEventListener("pointerup", this.onUp);
     this.closeButton?.removeEventListener("click", this.onClose);
+    document.removeEventListener("pointerdown", this.onBackdrop);
     this.canvas.style.cursor = "";
   }
 

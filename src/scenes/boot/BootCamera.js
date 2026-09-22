@@ -5,7 +5,7 @@ import { clamp, easeInOutCubic, lerp } from "../../game/easing.js";
 const YAW_LEFT_LIMIT = THREE.MathUtils.degToRad(30);
 const YAW_RIGHT_LIMIT = THREE.MathUtils.degToRad(10);
 const PITCH_UP_LIMIT = THREE.MathUtils.degToRad(1);
-const MIN_DISTANCE_SCALE = 0.3;
+const MIN_DISTANCE_SCALE = 1;
 const MAX_DISTANCE_SCALE = 1;
 const DEFAULT_VIEW_POSE = {
   azimuth: "left",
