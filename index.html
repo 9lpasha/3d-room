@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#070b09" />
     <title>Dev Path</title>
-    <script type="module" crossorigin src="/3d-room/assets/index-CN4PXM5i.js"></script>
-    <link rel="stylesheet" crossorigin href="/3d-room/assets/index-DQVONVNn.css">
+    <script type="module" crossorigin src="/3d-room/assets/index-BA6QZTi4.js"></script>
+    <link rel="stylesheet" crossorigin href="/3d-room/assets/index-DG67V8pF.css">
   </head>
   <body>
     <div id="app">
@@ -23,6 +23,19 @@
       </div>
       <div id="overlay" class="overlay">
         <p class="prompt-hint" id="start-hint">Нажмите, чтобы начать</p>
+      </div>
+      <button type="button" id="chapter-next" class="chapter-next" hidden>Глава 1</button>
+      <div id="chapter-modal" class="inspect-modal" hidden>
+        <div class="inspect-modal-dialog chapter-dialog" role="dialog" aria-modal="true" aria-labelledby="chapter-modal-text">
+          <p id="chapter-modal-text" class="inspect-modal-text chapter-modal-text">Перейти к первой главе?</p>
+          <div class="chapter-actions">
+            <button type="button" class="chapter-action" id="chapter-stay">Остаться</button>
+            <button type="button" class="chapter-action is-primary" id="chapter-go">Перейти</button>
+          </div>
+        </div>
+      </div>
+      <div id="chapter-title" class="chapter-title" hidden>
+        <p class="chapter-kicker">Глава 1</p>
       </div>
       <div id="inspect-modal" class="inspect-modal" hidden>
         <div class="inspect-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="inspect-modal-text">
