@@ -22,8 +22,6 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.clock = new THREE.Clock();
     this.audio = new AudioEngine();
@@ -56,14 +54,9 @@ export class Game {
       return;
     }
 
-    if (phase === "out") {
-      this.veil.style.opacity = String(amount);
-    } else if (phase === "in") {
-      this.veil.style.opacity = String(1 - amount);
-    } else {
-      this.veil.style.opacity = "0";
-    }
-
+    const opacity = phase === "out" ? amount : phase === "in" ? 1 - amount : 0;
+    this.veil.style.opacity = String(opacity);
+    this.veil.style.pointerEvents = opacity > 0.01 ? "auto" : "none";
     this.veil.dataset.kind = kind;
   }
 

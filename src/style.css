@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  --mono: Consolas, "Courier New", monospace;
 }
 
 * {
@@ -74,7 +75,7 @@ body {
 }
 
 .loader-label {
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--mono);
   font-size: clamp(12px, 3.2vw, 16px);
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -110,6 +111,10 @@ body {
   }
 }
 
+.mode-toggle[hidden] {
+  display: none;
+}
+
 .mode-toggle {
   position: absolute;
   top: max(10px, env(safe-area-inset-top));
@@ -134,7 +139,7 @@ body {
   border: 0;
   border-radius: 999px;
   padding: 0.48rem 0.7rem;
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--mono);
   font-size: clamp(10px, 2.6vw, 12px);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -160,7 +165,7 @@ body {
 }
 
 .prompt-hint {
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--mono);
   font-size: clamp(16px, 4.4vw, 26px);
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -202,7 +207,115 @@ body {
   background: #000;
   opacity: 0;
   pointer-events: none;
-  z-index: 3;
+  z-index: 7;
+}
+
+.chapter-next {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 4;
+  appearance: none;
+  border: 1px solid rgba(120, 255, 190, 0.28);
+  border-radius: 999px;
+  padding: 0.48rem 0.75rem;
+  font-family: var(--mono);
+  font-size: clamp(10px, 2.6vw, 12px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e8fff2;
+  background: rgba(64, 168, 118, 0.72);
+  box-shadow: 0 0 16px rgba(80, 255, 160, 0.18);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s ease, background 0.2s ease;
+}
+
+.chapter-next.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.chapter-next[hidden] {
+  display: none;
+}
+
+.chapter-next:hover,
+.chapter-next:focus-visible {
+  background: rgba(72, 186, 132, 0.88);
+}
+
+#app.has-chapter-next .mode-toggle {
+  width: min(62%, 210px);
+  transform: translateX(calc(-50% - 22px));
+}
+
+.chapter-modal-text {
+  padding-right: 0;
+  text-align: center;
+}
+
+.chapter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.05rem;
+}
+
+.chapter-action {
+  appearance: none;
+  border: 1px solid rgba(120, 255, 190, 0.22);
+  border-radius: 999px;
+  padding: 0.48rem 0.85rem;
+  font-family: var(--mono);
+  font-size: clamp(10px, 2.6vw, 12px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(180, 255, 210, 0.82);
+  background: transparent;
+  cursor: pointer;
+}
+
+.chapter-action.is-primary {
+  color: #e8fff2;
+  background: rgba(64, 168, 118, 0.72);
+  border-color: transparent;
+}
+
+.chapter-action:hover,
+.chapter-action:focus-visible {
+  color: #e8fff2;
+  background: rgba(72, 160, 110, 0.28);
+}
+
+.chapter-action.is-primary:hover,
+.chapter-action.is-primary:focus-visible {
+  background: rgba(72, 186, 132, 0.88);
+}
+
+.chapter-title {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.chapter-title[hidden] {
+  display: none;
+}
+
+.chapter-kicker {
+  font-family: var(--mono);
+  font-size: clamp(22px, 6vw, 36px);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f3fff8;
 }
 
 .inspect-modal {
@@ -255,7 +368,7 @@ body {
 }
 
 .inspect-modal-text {
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--mono);
   font-size: clamp(13px, 3.3vw, 16px);
   line-height: 1.45;
   color: rgba(210, 255, 230, 0.92);

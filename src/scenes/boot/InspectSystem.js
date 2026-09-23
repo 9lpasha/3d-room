@@ -3,10 +3,13 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { INSPECT_TEXT } from "./inspectConfig.js";
+import { isChromeEvent } from "../../ui/dom.js";
+import { inspectIds, inspectText } from "./inspectConfig.js";
 
-function isUiEvent(event) {
-  return Boolean(event.target.closest?.("#mode-toggle") || event.target.closest?.("#inspect-modal"));
+const CLICK_MOVE_LIMIT_SQ = 64;
+
+function emptyGroups() {
+  return Object.fromEntries(inspectIds().map((id) => [id, []]));
 }
 
 export class InspectSystem {
@@ -26,7 +29,7 @@ export class InspectSystem {
     this.pointerNdc = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     this.targets = [];
-    this.groups = { books: [], bed: [], laptop: [], mug: [] };
+    this.groups = emptyGroups();
     this.pointerDown = null;
     this.composer = null;
     this.outlinePass = null;
@@ -34,7 +37,7 @@ export class InspectSystem {
 
   setup(roomRoot, displayMesh) {
     this.targets = [];
-    this.groups = { books: [], bed: [], laptop: [], mug: [] };
+    this.groups = emptyGroups();
 
     roomRoot.traverse((child) => {
       const inspectId = child.userData.inspectId;
@@ -80,14 +83,14 @@ export class InspectSystem {
 
   bind() {
     this.onMove = (event) => {
-      if (this.open || isUiEvent(event)) {
+      if (this.open || isChromeEvent(event)) {
         return;
       }
       const inspectId = this.hitId(event);
       this.setHovered(this.canInspect(inspectId) ? inspectId : null);
     };
     this.onDown = (event) => {
-      if (isUiEvent(event)) {
+      if (isChromeEvent(event)) {
         this.pointerDown = null;
         return;
       }
@@ -101,12 +104,12 @@ export class InspectSystem {
     this.onUp = (event) => {
       const down = this.pointerDown;
       this.pointerDown = null;
-      if (!down?.inspectId || this.open || isUiEvent(event)) {
+      if (!down?.inspectId || this.open || isChromeEvent(event)) {
         return;
       }
       const dx = event.clientX - down.x;
       const dy = event.clientY - down.y;
-      if (dx * dx + dy * dy > 64) {
+      if (dx * dx + dy * dy > CLICK_MOVE_LIMIT_SQ) {
         return;
       }
       const inspectId = this.hitId(event);
@@ -124,7 +127,7 @@ export class InspectSystem {
       this.closeModal();
     };
     this.onBackdrop = (event) => {
-      if (event.target.closest(".inspect-modal-dialog")) {
+      if (!this.open || event.target.closest(".inspect-modal-dialog")) {
         return;
       }
       this.closeModal();
@@ -205,7 +208,7 @@ export class InspectSystem {
     }
 
     this.open = true;
-    this.text.textContent = INSPECT_TEXT[inspectId];
+    this.text.textContent = inspectText(inspectId);
     this.modal.hidden = false;
     this.setHovered(inspectId);
     if (this.getPlayMode() === "view") {

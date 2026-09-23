@@ -36,8 +36,6 @@ export class WindowParallax {
     this.object = object;
     this.offset = uniforms.offset;
     this.scale = uniforms.scale;
-    this.restPosition = object.position.clone();
-    this.restScale = object.scale.clone();
     object.scale.multiplyScalar(COVER);
 
     this.center = new THREE.Vector3();

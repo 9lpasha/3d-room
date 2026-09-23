@@ -26,7 +26,6 @@ export function createCrtMaterial(texture) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTerminal: { value: texture },
-      uTime: { value: 0 },
       uPower: { value: 0 },
     },
     vertexShader,

@@ -6,18 +6,20 @@ import macUrl from "../../assets/baked-mac.jpg";
 import posterUrl from "../../assets/poster.jpg";
 import roomUrl from "../../assets/room_corner.glb?url";
 import windowViewUrl from "../../assets/window-view.jpg";
-import { INSPECT_PARENTS } from "./inspectConfig.js";
+import { inspectIdByParent } from "./inspectConfig.js";
 import { createWindowMaterial } from "./windowParallax.js";
 
-function isUnder(object, name) {
+const LAMP_MATERIALS = new Set(["LampMetal", "LampInner", "LampShade"]);
+
+function ancestorNamed(object, name) {
   let node = object;
   while (node) {
     if (node.name === name) {
-      return true;
+      return node;
     }
     node = node.parent;
   }
-  return false;
+  return null;
 }
 
 function prepareMap(texture, channel) {
@@ -44,12 +46,14 @@ function hazeWindowMap(texture) {
   return hazed;
 }
 
-const LAMP_MATERIALS = new Set(["LampMetal", "LampInner", "LampShade"]);
+function materialNameOf(mesh) {
+  return Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name;
+}
 
-export function tagInspectable(object, roomRoot) {
+function tagInspectable(object, roomRoot) {
   let node = object;
   while (node && node !== roomRoot) {
-    const inspectId = INSPECT_PARENTS[node.name];
+    const inspectId = inspectIdByParent(node.name);
     if (inspectId) {
       object.userData.inspectId = inspectId;
       return;
@@ -58,8 +62,45 @@ export function tagInspectable(object, roomRoot) {
   }
 }
 
-function materialNameOf(mesh) {
-  return Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name;
+function assignMaterial(child, materials) {
+  if (ancestorNamed(child, "WindowView")) {
+    child.material = materials.window;
+    return "window";
+  }
+
+  if (ancestorNamed(child, "Poster")) {
+    child.material = materials.poster;
+    return null;
+  }
+
+  const materialName = materialNameOf(child);
+  if (materialName === "Screen") {
+    child.material = materials.screen;
+    return "screen";
+  }
+
+  if (ancestorNamed(child, "Mac")) {
+    child.material = materials.mac;
+    return null;
+  }
+
+  if (LAMP_MATERIALS.has(materialName)) {
+    child.material = materials.lamp;
+    return null;
+  }
+
+  child.material = materials.baked;
+  return null;
+}
+
+function prepareMesh(child, roomRoot, materials) {
+  if (!child.material || child.name.startsWith("Плоскость")) {
+    child.visible = false;
+    return null;
+  }
+
+  tagInspectable(child, roomRoot);
+  return assignMaterial(child, materials);
 }
 
 export async function loadBootRoom(threeScene, onProgress) {
@@ -90,11 +131,16 @@ export async function loadBootRoom(threeScene, onProgress) {
   prepareMap(macMap, 0);
   prepareMap(posterMap, 1);
 
-  const bakedMaterial = new THREE.MeshBasicMaterial({ map: baked });
-  const macMaterial = new THREE.MeshBasicMaterial({ map: macMap, side: THREE.DoubleSide });
-  const posterMaterial = new THREE.MeshBasicMaterial({ map: posterMap, side: THREE.DoubleSide });
+  const materials = {
+    baked: new THREE.MeshBasicMaterial({ map: baked }),
+    mac: new THREE.MeshBasicMaterial({ map: macMap, side: THREE.DoubleSide }),
+    poster: new THREE.MeshBasicMaterial({ map: posterMap, side: THREE.DoubleSide }),
+    screen: new THREE.MeshBasicMaterial({ color: 0x050505 }),
+    lamp: new THREE.MeshBasicMaterial({ map: baked, side: THREE.DoubleSide }),
+  };
   const windowUniforms = createWindowMaterial(hazeWindowMap(windowMap));
-  const windowMaterial = windowUniforms.material;
+  materials.window = windowUniforms.material;
+
   const roomRoot = gltf.scene;
   threeScene.add(roomRoot);
 
@@ -106,42 +152,12 @@ export async function loadBootRoom(threeScene, onProgress) {
       return;
     }
 
-    if (!child.material || child.name.startsWith("Плоскость")) {
-      child.visible = false;
-      return;
-    }
-
-    tagInspectable(child, roomRoot);
-
-    if (isUnder(child, "WindowView")) {
-      child.material = windowMaterial;
-      windowView = child;
-      return;
-    }
-
-    if (isUnder(child, "Poster")) {
-      child.material = posterMaterial;
-      return;
-    }
-
-    const materialName = materialNameOf(child);
-    if (materialName === "Screen") {
+    const role = prepareMesh(child, roomRoot, materials);
+    if (role === "screen") {
       laptopScreen = child;
-      child.material = new THREE.MeshBasicMaterial({ color: 0x050505 });
-      return;
+    } else if (role === "window") {
+      windowView = child;
     }
-
-    if (isUnder(child, "Mac")) {
-      child.material = macMaterial;
-      return;
-    }
-
-    if (LAMP_MATERIALS.has(materialName)) {
-      child.material = new THREE.MeshBasicMaterial({ map: baked, side: THREE.DoubleSide });
-      return;
-    }
-
-    child.material = bakedMaterial;
   });
 
   if (!laptopScreen) {

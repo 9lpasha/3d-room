@@ -3,7 +3,6 @@ export class AudioEngine {
     this.ctx = null;
     this.master = null;
     this.humNodes = [];
-    this.unlocked = false;
   }
 
   async unlock() {
@@ -18,7 +17,6 @@ export class AudioEngine {
       await this.ctx.resume();
     }
 
-    this.unlocked = true;
   }
 
   playBoot() {

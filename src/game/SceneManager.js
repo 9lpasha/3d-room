@@ -1,8 +1,4 @@
-const TRANSITION_DURATION = {
-  fade: 0.9,
-  crt: 1.2,
-  glitch: 0.7,
-};
+const FADE_SECONDS = 0.9;
 
 export class SceneManager {
   constructor(game) {
@@ -15,7 +11,7 @@ export class SceneManager {
       kind: "fade",
       phase: "idle",
       t: 0,
-      duration: 0.9,
+      duration: FADE_SECONDS,
       nextName: null,
     };
   }
@@ -49,7 +45,7 @@ export class SceneManager {
     this.transition.kind = kind;
     this.transition.phase = "out";
     this.transition.t = 0;
-    this.transition.duration = TRANSITION_DURATION[kind] ?? 0.9;
+    this.transition.duration = FADE_SECONDS;
     this.transition.nextName = name;
   }
 

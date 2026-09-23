@@ -12,6 +12,8 @@ const DEFAULT_VIEW_POSE = {
   polar: "up",
 };
 const POSE_MOVE_SECONDS = 1.15;
+const CLOSE_OFFSET = new THREE.Vector3(0, 0.3, -0.2);
+const FAR_OFFSET = new THREE.Vector3(0, 0.1, 0);
 
 export class BootCamera {
   constructor() {
@@ -111,13 +113,13 @@ export class BootCamera {
       .copy(this.lookClose)
       .addScaledVector(this.screenNormal, distClose)
       .addScaledVector(this.screenUp, this.frameHalfHeight * 0.22)
-      .add(new THREE.Vector3(0, 0.3, -0.2));
+      .add(CLOSE_OFFSET);
 
     this.cameraFrom
       .copy(this.lookClose)
       .addScaledVector(this.screenNormal, distFar)
       .addScaledVector(this.screenUp, this.frameHalfHeight * 0.28)
-      .add(new THREE.Vector3(0, 0.1, 0));
+      .add(FAR_OFFSET);
 
     this.nudgeAwayFromChair(this.cameraFrom);
   }
@@ -173,8 +175,8 @@ export class BootCamera {
     this.lookRoom.y = center.y * 0.78;
     const flower = this.roomRoot?.getObjectByName("Flower");
     if (flower) {
-      const center = new THREE.Box3().setFromObject(flower).getCenter(this.lookRoom);
-      this.lookRoom.set(center.x - 0.2, center.y, center.z - 0.2);
+      const flowerCenter = new THREE.Box3().setFromObject(flower).getCenter(new THREE.Vector3());
+      this.lookRoom.set(flowerCenter.x - 0.2, flowerCenter.y, flowerCenter.z - 0.2);
     }
 
     this.cameraRoom.copy(center).addScaledVector(this.screenNormal, dist * 0.42);
@@ -194,8 +196,6 @@ export class BootCamera {
     this.controls.enablePan = false;
     this.controls.rotateSpeed = 0.72;
     this.controls.zoomSpeed = 0.9;
-    this.controls.minPolarAngle = 0.18;
-    this.controls.maxPolarAngle = Math.PI * 0.49;
     this.captureDefaultView();
   }
 
@@ -357,13 +357,6 @@ export class BootCamera {
     }
     this.camera.updateProjectionMatrix();
     this.controls?.update();
-  }
-
-  focusPoint() {
-    if (this.controls?.enabled) {
-      return this.controls.target;
-    }
-    return this.lookAt;
   }
 
   dispose() {

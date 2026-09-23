@@ -1,5 +1,24 @@
+const AUTO_TYPE_CHARS_PER_SECOND = 11;
+const AUTO_SUBMIT_DELAY = 0.4;
+const CURSOR_BLINK_SECONDS = 0.53;
+
+const LINE_STYLES = [
+  { match: "not recognized", fill: "#ff8b6b", shadow: "rgba(255, 110, 80, 0.45)" },
+  { match: "lot to learn", fill: "#ffe2a8", shadow: "rgba(255, 210, 140, 0.4)" },
+];
+const DEFAULT_LINE_STYLE = { fill: "#86ffc0", shadow: "rgba(90, 255, 170, 0.55)" };
+
+function lineStyle(line) {
+  return LINE_STYLES.find((style) => line.includes(style.match)) ?? DEFAULT_LINE_STYLE;
+}
+
 export class Terminal {
-  constructor(width = 1600, height = 1000) {
+  constructor({
+    width = 1600,
+    height = 1000,
+    prompt = "C:\\Users\\You>\n> ",
+    command = "npm run career",
+  } = {}) {
     this.canvas = document.createElement("canvas");
     this.canvas.width = width;
     this.canvas.height = height;
@@ -8,9 +27,9 @@ export class Terminal {
     this.revealing = false;
     this.revealIndex = 0;
     this.revealSpeed = 22;
-    this.fullText = "C:\\Users\\You>\n> ";
+    this.fullText = prompt;
     this.visibleText = "";
-    this.forcedCommand = "npm run career";
+    this.forcedCommand = command;
     this.typedCount = 0;
     this.input = "";
     this.extraText = "";
@@ -99,20 +118,39 @@ export class Terminal {
   }
 
   update(delta) {
-    if (this.revealing) {
-      this.revealIndex += this.revealSpeed * delta;
-      const next = this.fullText.slice(0, Math.floor(this.revealIndex));
-      if (next !== this.visibleText) {
-        this.visibleText = next;
-        this.dirty = true;
-      }
-      if (this.revealIndex >= this.fullText.length) {
-        this.revealing = false;
-        this.inputEnabled = true;
-        this.dirty = true;
-      }
+    this.advanceReveal(delta);
+    this.advancePrint(delta);
+    this.advanceAutoFill(delta);
+    this.advanceCursor(delta);
+
+    if (!this.dirty) {
+      return false;
     }
 
+    this.draw();
+    this.dirty = false;
+    return true;
+  }
+
+  advanceReveal(delta) {
+    if (!this.revealing) {
+      return;
+    }
+
+    this.revealIndex += this.revealSpeed * delta;
+    const next = this.fullText.slice(0, Math.floor(this.revealIndex));
+    if (next !== this.visibleText) {
+      this.visibleText = next;
+      this.dirty = true;
+    }
+    if (this.revealIndex >= this.fullText.length) {
+      this.revealing = false;
+      this.inputEnabled = true;
+      this.dirty = true;
+    }
+  }
+
+  advancePrint(delta) {
     if (!this.printing && this.printQueue.length > 0) {
       const job = this.printQueue.shift();
       this.printing = {
@@ -125,59 +163,66 @@ export class Terminal {
       };
     }
 
-    if (this.printing) {
-      if (this.printing.delay > 0) {
-        this.printing.delay -= delta;
-      } else {
-        this.printing.index += this.printing.speed * delta;
-        const visible = this.printing.text.slice(0, Math.floor(this.printing.index));
-        if (visible !== this.printing.visible) {
-          this.printing.visible = visible;
-          this.dirty = true;
-        }
-        if (this.printing.index >= this.printing.text.length) {
-          this.extraText += this.printing.text;
-          const { resolve } = this.printing;
-          this.printing = null;
-          this.dirty = true;
-          resolve();
-        }
-      }
+    if (!this.printing) {
+      return;
     }
 
-    if (this.autoFill && this.inputEnabled) {
-      if (!this.isComplete()) {
-        this.autoFillTimer += delta;
-        const nextCount = Math.min(this.forcedCommand.length, Math.floor(this.autoFillTimer * 11));
-        if (nextCount !== this.typedCount) {
-          this.typedCount = nextCount;
-          this.input = this.forcedCommand.slice(0, this.typedCount);
-          this.dirty = true;
-        }
-      } else {
-        this.autoSubmitDelay += delta;
-        if (this.autoSubmitDelay >= 0.4) {
-          this.submit();
-        }
-      }
+    if (this.printing.delay > 0) {
+      this.printing.delay -= delta;
+      return;
     }
 
-    if (this.inputEnabled) {
-      this.blinkTimer += delta;
-      if (this.blinkTimer >= 0.53) {
-        this.blinkTimer = 0;
-        this.cursorOn = !this.cursorOn;
+    this.printing.index += this.printing.speed * delta;
+    const visible = this.printing.text.slice(0, Math.floor(this.printing.index));
+    if (visible !== this.printing.visible) {
+      this.printing.visible = visible;
+      this.dirty = true;
+    }
+    if (this.printing.index >= this.printing.text.length) {
+      this.extraText += this.printing.text;
+      const { resolve } = this.printing;
+      this.printing = null;
+      this.dirty = true;
+      resolve();
+    }
+  }
+
+  advanceAutoFill(delta) {
+    if (!this.autoFill || !this.inputEnabled) {
+      return;
+    }
+
+    if (!this.isComplete()) {
+      this.autoFillTimer += delta;
+      const nextCount = Math.min(
+        this.forcedCommand.length,
+        Math.floor(this.autoFillTimer * AUTO_TYPE_CHARS_PER_SECOND),
+      );
+      if (nextCount !== this.typedCount) {
+        this.typedCount = nextCount;
+        this.input = this.forcedCommand.slice(0, this.typedCount);
         this.dirty = true;
       }
+      return;
     }
 
-    if (this.dirty) {
-      this.draw();
-      this.dirty = false;
-      return true;
+    this.autoSubmitDelay += delta;
+    if (this.autoSubmitDelay >= AUTO_SUBMIT_DELAY) {
+      this.submit();
+    }
+  }
+
+  advanceCursor(delta) {
+    if (!this.inputEnabled) {
+      return;
     }
 
-    return false;
+    this.blinkTimer += delta;
+    if (this.blinkTimer >= CURSOR_BLINK_SECONDS) {
+      this.blinkTimer = 0;
+      this.cursorOn = !this.cursorOn;
+      this.dirty = true;
+    }
   }
 
   draw() {
@@ -198,17 +243,9 @@ export class Terminal {
     const lines = text.split("\n");
 
     lines.forEach((line, index) => {
-      if (line.includes("not recognized")) {
-        ctx.fillStyle = "#ff8b6b";
-        ctx.shadowColor = "rgba(255, 110, 80, 0.45)";
-      } else if (line.includes("lot to learn")) {
-        ctx.fillStyle = "#ffe2a8";
-        ctx.shadowColor = "rgba(255, 210, 140, 0.4)";
-      } else {
-        ctx.fillStyle = "#86ffc0";
-        ctx.shadowColor = "rgba(90, 255, 170, 0.55)";
-      }
-
+      const style = lineStyle(line);
+      ctx.fillStyle = style.fill;
+      ctx.shadowColor = style.shadow;
       ctx.shadowBlur = 16;
       ctx.fillText(line, left, top + index * lineHeight);
     });
@@ -217,8 +254,8 @@ export class Terminal {
       const last = lines[lines.length - 1] ?? "";
       const cursorX = left + ctx.measureText(last).width + 6;
       const cursorY = top + (lines.length - 1) * lineHeight;
-      ctx.fillStyle = "#86ffc0";
-      ctx.shadowColor = "rgba(90, 255, 170, 0.55)";
+      ctx.fillStyle = DEFAULT_LINE_STYLE.fill;
+      ctx.shadowColor = DEFAULT_LINE_STYLE.shadow;
       ctx.fillText("_", cursorX, cursorY);
     }
   }
