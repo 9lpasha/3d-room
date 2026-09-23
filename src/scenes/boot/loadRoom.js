@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import bakedUrl from "../../assets/baked-0.75.jpg";
+import bakedUrl from "../../assets/baked.jpg";
 import macUrl from "../../assets/baked-mac.jpg";
 import posterUrl from "../../assets/poster.jpg";
 import roomUrl from "../../assets/room_corner.glb?url";
