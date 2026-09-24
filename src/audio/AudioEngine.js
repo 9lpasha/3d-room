@@ -1,8 +1,20 @@
+import loFiUrl from "../assets/lo-fi.mp3";
+
 export class AudioEngine {
   constructor() {
     this.ctx = null;
     this.master = null;
     this.humNodes = [];
+    this.music = new Audio(loFiUrl);
+    this.music.loop = true;
+    this.music.preload = "auto";
+    this.music.volume = 0.2;
+    this.music.addEventListener("ended", () => {
+      if (this.music.loop && !this.music.paused) {
+        this.music.currentTime = 0;
+        void this.music.play().catch(() => {});
+      }
+    });
   }
 
   async unlock() {
@@ -16,7 +28,6 @@ export class AudioEngine {
     if (this.ctx.state === "suspended") {
       await this.ctx.resume();
     }
-
   }
 
   playBoot() {
@@ -30,6 +41,23 @@ export class AudioEngine {
     this.playCharge(t + 0.12);
     this.startHum(t + 0.2);
     this.playPop(t + 0.58);
+    this.startMusic();
+  }
+
+  startMusic() {
+    if (!this.ctx || !this.music.paused) {
+      return;
+    }
+
+    if (this.music.ended) {
+      this.music.currentTime = 0;
+    }
+    void this.music.play().catch(() => {});
+  }
+
+  stopMusic() {
+    this.music.pause();
+    this.music.currentTime = 0;
   }
 
   playClick(time) {
