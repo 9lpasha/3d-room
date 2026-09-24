@@ -1,4 +1,4 @@
-const CACHE_NAME = "dev-path-v3";
+const CACHE_NAME = "dev-path-v4";
 const scopeUrl = new URL(self.registration.scope);
 const appShell = [new URL("./", scopeUrl).href, new URL("./index.html", scopeUrl).href];
 
