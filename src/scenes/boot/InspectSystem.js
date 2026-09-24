@@ -232,11 +232,12 @@ export class InspectSystem {
   }
 
   render() {
-    if (this.composer) {
-      this.composer.render();
-      return true;
+    if (!this.composer || !this.hoveredId) {
+      return false;
     }
-    return false;
+
+    this.composer.render();
+    return true;
   }
 
   resize(width, height) {

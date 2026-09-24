@@ -211,6 +211,16 @@ export class BootCamera {
     }
 
     this.camera.lookAt(this.lookAt);
+    this.updateProjectionIfNeeded();
+  }
+
+  updateProjectionIfNeeded() {
+    if (this.camera.fov === this.lastFov && this.camera.aspect === this.lastAspect) {
+      return;
+    }
+
+    this.lastFov = this.camera.fov;
+    this.lastAspect = this.camera.aspect;
     this.camera.updateProjectionMatrix();
   }
 
@@ -296,7 +306,7 @@ export class BootCamera {
     this.camera.position.lerpVectors(this.poseFrom, this.poseTo, t);
     this.lookAt.lerpVectors(this.poseLookFrom, this.poseLookTo, t);
     this.camera.lookAt(this.lookAt);
-    this.camera.updateProjectionMatrix();
+    this.updateProjectionIfNeeded();
     if (t >= 1) {
       this.poseActive = false;
     }
