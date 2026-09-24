@@ -22,11 +22,13 @@ function ancestorNamed(object, name) {
   return null;
 }
 
-function prepareMap(texture, channel) {
+function configureTexture(texture, channel) {
   texture.flipY = false;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
-  texture.channel = channel;
+  if (channel !== undefined) {
+    texture.channel = channel;
+  }
 }
 
 function hazeWindowMap(texture) {
@@ -42,7 +44,7 @@ function hazeWindowMap(texture) {
   ctx.fillRect(0, 0, width, height);
 
   const hazed = new THREE.CanvasTexture(canvas);
-  prepareMap(hazed, 2);
+  configureTexture(hazed, 2);
   return hazed;
 }
 
@@ -125,11 +127,9 @@ export async function loadBootRoom(threeScene, onProgress) {
     gltfLoader.loadAsync(roomUrl),
   ]);
 
-  baked.flipY = false;
-  baked.colorSpace = THREE.SRGBColorSpace;
-  baked.anisotropy = 8;
-  prepareMap(macMap, 0);
-  prepareMap(posterMap, 1);
+  configureTexture(baked);
+  configureTexture(macMap, 0);
+  configureTexture(posterMap, 1);
 
   const materials = {
     baked: new THREE.MeshBasicMaterial({ map: baked }),

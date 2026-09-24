@@ -21,26 +21,36 @@ export class SceneManager {
   }
 
   async start(name) {
+    const scene = this.getScene(name);
+    await scene.init();
+    this.activate(name, scene);
+  }
+
+  goTo(name, kind = "fade") {
+    if (this.transition.active || name === this.currentName) {
+      return;
+    }
+
+    this.getScene(name);
+    this.beginTransition(name, kind);
+  }
+
+  getScene(name) {
     const scene = this.scenes.get(name);
     if (!scene) {
       throw new Error(`Unknown scene: ${name}`);
     }
+    return scene;
+  }
 
-    await scene.init();
+  activate(name, scene) {
     this.current = scene;
     this.currentName = name;
     this.game.attachScene(scene);
     scene.enter();
   }
 
-  async goTo(name, kind = "fade") {
-    if (this.transition.active || name === this.currentName) {
-      return;
-    }
-    if (!this.scenes.has(name)) {
-      throw new Error(`Unknown scene: ${name}`);
-    }
-
+  beginTransition(name, kind) {
     this.transition.active = true;
     this.transition.kind = kind;
     this.transition.phase = "out";
@@ -67,22 +77,28 @@ export class SceneManager {
     }
 
     if (this.transition.phase === "out") {
-      const next = this.scenes.get(this.transition.nextName);
-      if (this.current) {
-        this.current.exit();
-      }
-      if (!next.ready) {
-        await next.init();
-      }
-      this.current = next;
-      this.currentName = this.transition.nextName;
-      this.game.attachScene(next);
-      next.enter();
-      this.transition.phase = "in";
-      this.transition.t = 0;
+      await this.activateNextScene();
       return;
     }
 
+    this.finishTransition();
+  }
+
+  async activateNextScene() {
+    const nextName = this.transition.nextName;
+    const next = this.getScene(nextName);
+
+    this.current?.exit();
+    if (!next.ready) {
+      await next.init();
+    }
+
+    this.activate(nextName, next);
+    this.transition.phase = "in";
+    this.transition.t = 0;
+  }
+
+  finishTransition() {
     this.transition.active = false;
     this.transition.phase = "idle";
     this.game.setTransition(this.transition.kind, "idle", 0);

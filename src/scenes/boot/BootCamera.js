@@ -281,6 +281,11 @@ export class BootCamera {
     }
   }
 
+  focusLaptop() {
+    this.setControlsEnabled(false);
+    this.moveTo(this.cameraTo, this.lookClose);
+  }
+
   updatePose(delta) {
     if (!this.poseActive) {
       return false;
