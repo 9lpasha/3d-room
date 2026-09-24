@@ -3,6 +3,7 @@
   "short_name": "DEV.ROOM",
   "description": "An interactive developer journey.",
   "lang": "en",
+  "id": ".",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -10,6 +11,12 @@
   "background_color": "#000000",
   "theme_color": "#070b09",
   "icons": [
+    {
+      "src": "./icons/icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",
