@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
@@ -7,11 +7,11 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Dev Path" />
+    <meta name="apple-mobile-web-app-title" content="DEV.ROOM" />
     <link rel="manifest" href="/3d-room/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/3d-room/icons/icon-192.svg" />
     <link rel="icon" type="image/svg+xml" href="/3d-room/icons/icon-192.svg" />
-    <title>Dev Path</title>
+    <title>DEV.ROOM</title>
     <script type="module" crossorigin src="/3d-room/assets/index-SliMIxhZ.js"></script>
     <link rel="stylesheet" crossorigin href="/3d-room/assets/index-1OIMg5E5.css">
   </head>
@@ -26,14 +26,21 @@
       </div>
       <div id="mode-toggle" class="mode-toggle" role="group" aria-label="Режим">
         <button type="button" class="mode-toggle-btn" data-mode="view" aria-pressed="false">Просмотр</button>
-        <button type="button" class="mode-toggle-btn is-active" data-mode="interactive" aria-pressed="true">Интерактив</button>
+        <button type="button" class="mode-toggle-btn is-active" data-mode="interactive" aria-pressed="true">
+          Интерактив
+        </button>
       </div>
       <div id="overlay" class="overlay">
         <p class="prompt-hint" id="start-hint">Нажмите, чтобы начать</p>
       </div>
       <button type="button" id="chapter-next" class="chapter-next" hidden>Глава 1</button>
       <div id="chapter-modal" class="inspect-modal" hidden>
-        <div class="inspect-modal-dialog chapter-dialog" role="dialog" aria-modal="true" aria-labelledby="chapter-modal-text">
+        <div
+          class="inspect-modal-dialog chapter-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="chapter-modal-text"
+        >
           <p id="chapter-modal-text" class="inspect-modal-text chapter-modal-text">Перейти к первой главе?</p>
           <div class="chapter-actions">
             <button type="button" class="chapter-action" id="chapter-stay">Остаться</button>

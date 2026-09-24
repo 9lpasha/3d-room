@@ -1,9 +1,6 @@
-const CACHE_NAME = "dev-path-v1";
+const CACHE_NAME = "DEV.ROOM-v1";
 const scopeUrl = new URL(self.registration.scope);
-const appShell = [
-  new URL("./", scopeUrl).href,
-  new URL("./index.html", scopeUrl).href,
-];
+const appShell = [new URL("./", scopeUrl).href, new URL("./index.html", scopeUrl).href];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(appShell)));
@@ -25,9 +22,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(new URL("./index.html", scopeUrl).href)),
-    );
+    event.respondWith(fetch(event.request).catch(() => caches.match(new URL("./index.html", scopeUrl).href)));
     return;
   }
 
