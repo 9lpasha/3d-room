@@ -8,6 +8,8 @@ export class AudioEngine {
     this.music = new Audio(loFiUrl);
     this.music.loop = true;
     this.music.preload = "auto";
+    this.music.playsInline = true;
+    this.music.setAttribute("playsinline", "");
     this.music.volume = 0.2;
     this.music.addEventListener("ended", () => {
       if (this.music.loop && !this.music.paused) {
@@ -19,10 +21,14 @@ export class AudioEngine {
 
   async unlock() {
     if (!this.ctx) {
-      this.ctx = new AudioContext();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioContextClass();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.72;
       this.master.connect(this.ctx.destination);
+
+      // Start the HTML audio while the iOS user-gesture is still active.
+      this.startMusic();
     }
 
     if (this.ctx.state === "suspended") {
